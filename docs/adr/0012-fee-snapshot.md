@@ -17,14 +17,15 @@
 **`Trade.match()` 시점에 `FeePolicy.snapshotFor(price)` 가 그 순간의 수수료 계산서를 그대로
 보관한 `FeeSnapshot` 객체를 만들고, Trade 애그리거트가 그것을 같이 들고 다닌다.**
 
-```java
-public record FeeSnapshot(
-    Money tradeAmount,
-    BigDecimal sellerCommissionRate, BigDecimal buyerCommissionRate,
-    Money inspectionFee, Money shippingFee, Money fixedProcessingFee,
-    Money sellerCommission, Money buyerCommission,    // 계산된 수수료
-    Money buyerCharge, Money sellerNet                 // 합계
-) {}
+```kotlin
+@JvmRecord
+data class FeeSnapshot(
+    val tradeAmount: Money,
+    val sellerCommissionRate: BigDecimal, val buyerCommissionRate: BigDecimal,
+    val inspectionFee: Money, val shippingFee: Money, val fixedProcessingFee: Money,
+    val sellerCommission: Money, val buyerCommission: Money,   // 계산된 수수료
+    val buyerCharge: Money, val sellerNet: Money,               // 합계
+)
 ```
 
 - `Payout.schedule(snapshot)` 이 snapshot 의 sellerNet 으로 정산.

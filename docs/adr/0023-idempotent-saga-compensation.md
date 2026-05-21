@@ -55,24 +55,25 @@ CREATE TABLE compensation_log (
 
 ### `CompensationGuard.runOnce(op, key, action)` helper
 
-```java
-public <T> Outcome<T> runOnce(String operation, String businessKey, Function<...> action) {
-    var existing = store.find(operation, businessKey);
-    if (existing.isPresent()) {
-        if (existing.isCompleted())  return cachedFromEntry(existing);     // 캐시 hit
-        if (existing.isInProgress()) throw new DuplicateInProgressException();
-        if (existing.isFailed())     return cachedFailureFromEntry(existing);  // 재시도는 새 키로
+```kotlin
+fun <T> runOnce(operation: String, businessKey: String, action: Function<Outcome<T>?, Outcome<T>>): Outcome<T> {
+    val existing = store.find(operation, businessKey)
+    if (existing.isPresent) {
+        val entry = existing.get()
+        if (entry.isCompleted())  return cachedFromEntry(entry)      // 캐시 hit
+        if (entry.isInProgress()) throw DuplicateInProgressException(operation, businessKey)
+        if (entry.isFailed())     return cachedFailureFromEntry(entry)  // 재시도는 새 키로
     }
-    store.begin(operation, businessKey, now);     // PK INSERT — 자리 점유
-    try {
-        outcome = action.apply(null);             // 외부 호출
-    } catch (RuntimeException e) {
-        store.fail(operation, businessKey, ...);
-        throw e;
+    store.begin(operation, businessKey, now)      // PK INSERT — 자리 점유
+    val outcome = try {
+        action.apply(null)                        // 외부 호출
+    } catch (e: RuntimeException) {
+        store.fail(operation, businessKey, ...)
+        throw e
     }
-    if (outcome.completed()) store.complete(...);
-    else                     store.fail(...);
-    return outcome;
+    if (outcome.completed) store.complete(...)
+    else                   store.fail(...)
+    return outcome
 }
 ```
 

@@ -35,11 +35,11 @@ expireStaleBidsJob) 은 정의만 있고 실행을 시작해주는 주체가 없
   보고 잠금 만료를 판단. 인스턴스 자기 시계가 어긋나도 영향 없음)
 - shedlock 테이블은 Flyway 마이그레이션 V2 로 추가
 
-```java
+```kotlin
 @Scheduled(cron = "0 * * * * *")
 @SchedulerLock(name = "autoCancelStaleTrades", lockAtMostFor = "PT5M", lockAtLeastFor = "PT30S")
-public void runAutoCancelStaleTrades() {
-    jobLauncher.run(autoCancelStaleTradesJob, params);
+fun runAutoCancelStaleTrades() {
+    jobLauncher.run(autoCancelStaleTradesJob, params)
 }
 ```
 

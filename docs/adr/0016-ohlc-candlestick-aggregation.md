@@ -17,24 +17,24 @@ ADR-0015 의 raw PriceTick (개별 체결 단건) 만으로 차트를 그리려�
 
 ### 도메인 모델
 
-```java
-record OhlcCandle(
-    UUID id, SkuId skuId, OhlcPeriod period, Instant bucketStart,
-    Money open,        // bucket 안 첫 체결가
-    Money high,        // 최대
-    Money low,         // 최소
-    Money close,       // 마지막 체결가
-    long volume,       // 거래 건수 (한정판은 수량 = 1 이라 == tradeCount)
-    long tradeCount
+```kotlin
+data class OhlcCandle(
+    val id: UUID, val skuId: SkuId, val period: OhlcPeriod, val bucketStart: Instant,
+    val open: Money,        // bucket 안 첫 체결가
+    val high: Money,        // 최대
+    val low: Money,         // 최소
+    val close: Money,       // 마지막 체결가
+    val volume: Long,       // 거래 건수 (한정판은 수량 = 1 이라 == tradeCount)
+    val tradeCount: Long,
 ) {
-  // invariant: low ≤ open/close ≤ high. record 생성자에서 검증.
+    // invariant: low ≤ open/close ≤ high. init 블록에서 검증.
 }
 
-enum OhlcPeriod {
-  ONE_MIN(1m), FIVE_MIN(5m), ONE_HOUR(1h), ONE_DAY(1d);
-  bucketStart(Instant)  // alignment
-  bucketEnd(Instant)
-  duration()
+enum class OhlcPeriod {
+    ONE_MIN, FIVE_MIN, ONE_HOUR, ONE_DAY;  // 각 constant 가 Duration 보유
+    fun bucketStart(t: Instant): Instant   // alignment
+    fun bucketEnd(t: Instant): Instant
+    fun duration(): Duration
 }
 ```
 
@@ -62,9 +62,9 @@ bucket 이 닫힌 후 (시간이 지나 더 이상 새 tick 안 들어옴) 정�
 
 ### Aggregation batch — 직전 bucket 만 닫음
 
-```java
+```kotlin
 @Scheduled(cron = "5 * * * * *")  // 매 분 5초
-runOhlcOneMin() → ohlcService.closePreviousBucket(ONE_MIN, now)
+fun runOhlcOneMin() = ohlcService.closePreviousBucket(ONE_MIN, now)
 ```
 
 각 cron 은 직전 bucket (시간이 지나 이미 닫힌 것) 만 처리. 진행 중인 bucket 을 집계하면

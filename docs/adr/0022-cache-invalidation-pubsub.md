@@ -69,16 +69,14 @@ Redis pub/sub 은 fire-and-forget. 다음 시나리오에서 메시지 유실:
 `TwoTierMarketStatsCache.writeBoth` 안에서 fresh 값을 L1/L2 에 채운 직후. `invalidate(SkuId)`
 명시 호출 시점에도 publish — 도메인 측이 무효화를 강제할 때.
 
-```java
-private void writeBoth(SkuId key, MarketStats v, Instant computedAt, long computeMs) {
+```kotlin
+private fun writeBoth(key: SkuId, v: MarketStats, computedAt: Instant, computeMs: Long) {
     // ... L1, L2 채우기 ...
-    broadcastInvalidate(key);
+    broadcastInvalidate(key)
 }
 
-private void broadcastInvalidate(SkuId key) {
-    if (invalidationPublisher != null) {
-        invalidationPublisher.publish(key.value().toString());
-    }
+private fun broadcastInvalidate(key: SkuId) {
+    invalidationPublisher?.publish(key.value().toString())
 }
 ```
 
