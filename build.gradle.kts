@@ -37,11 +37,7 @@ subprojects {
     }
 
     dependencies {
-        // 모든 모듈 공통: Lombok + JUnit launcher
-        "compileOnly"("org.projectlombok:lombok")
-        "annotationProcessor"("org.projectlombok:lombok")
-        "testCompileOnly"("org.projectlombok:lombok")
-        "testAnnotationProcessor"("org.projectlombok:lombok")
+        // 모든 모듈 공통: JUnit launcher
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
     }
 
