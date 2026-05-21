@@ -18,9 +18,9 @@ dependencies {
 
 kotlin {
     compilerOptions {
-        // -Xjvm-default=all: Kotlin interface default 메서드를 JVM default 로 컴파일.
-        // EventPublisher.publishAll 같은 default 메서드를 Java 구현체가 따로 override 하지 않아도
-        // 그대로 상속 가능.
+        // -Xjvm-default=all: Kotlin interface default 메서드를 JVM default 메서드로 컴파일.
+        // EventPublisher.publishAll 같은 default 메서드를 표준 JVM default 로 노출해, 구현
+        // 클래스가 따로 override 하지 않아도 바이트코드 레벨에서 그대로 상속된다.
         freeCompilerArgs.addAll("-Xjsr305=strict", "-Xjvm-default=all")
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
