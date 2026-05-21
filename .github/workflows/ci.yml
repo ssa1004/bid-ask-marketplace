@@ -48,7 +48,7 @@ jobs:
             e2e-tests/build/test-results/**
 
   static-analysis:
-    name: Static analysis (compile -Xlint:all)
+    name: Static analysis (Kotlin compile)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
