@@ -389,11 +389,11 @@ graceful shutdown) 와 Saga REQUIRES_NEW 격리 가정은 raw manifests 와 동�
 
 ## Portfolio Set 통합
 
-이 레포는 단독으로도 동작하지만, 같은 사용자가 운영하는 8개 백엔드 레포가 한 시스템처럼
+이 레포는 단독으로도 동작하지만, 같은 사용자가 운영하는 10개 백엔드 레포가 한 시스템처럼
 맞물리는 구성의 일부입니다. 프로필 README:
 <https://github.com/ssa1004/ssa1004>.
 
-### 8 레포 한눈 표
+### 10 레포 한눈 표
 
 | 레포 | 역할 | 본 레포 (bid-ask-marketplace) 와의 관계 |
 |---|---|---|
@@ -405,6 +405,8 @@ graceful shutdown) 와 Saga REQUIRES_NEW 격리 가정은 raw manifests 와 동�
 | **`bid-ask-marketplace`** | **본 레포 — 한정판 리셀 마켓 백엔드** | — |
 | `gpu-job-orchestrator` | GPU job 스케줄러 | 검수 사진 ML 가품 탐지 워커 (향후) |
 | `commerce-ops` | 관측 스택 (Prometheus/Grafana/Tempo/Loki) | 본 레포의 metrics/trace/log 수집 |
+| `realtime-feed-service` | 실시간 피드 스트리밍 | 본 레포의 체결 이벤트를 실시간 피드로 중계 (선택) |
+| `graphql-gateway` | GraphQL API 게이트웨이 | 본 레포의 REST endpoint 를 GraphQL 스키마로 노출 (선택) |
 
 ### 들어오는 / 나가는 통합점
 
