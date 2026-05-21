@@ -1,7 +1,7 @@
 # Bid/Ask Marketplace
 
 [![CI](https://github.com/ssa1004/bid-ask-marketplace/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ssa1004/bid-ask-marketplace/actions/workflows/ci.yml)
-[![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
+[![JDK](https://img.shields.io/badge/JDK-21-orange?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.13-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -15,7 +15,7 @@
 
 ## 기술 스택
 
-- **Language**: Java 21, Kotlin 2.0 (도메인 + adapter-in 모듈은 Kotlin, 나머지는 Java)
+- **Language**: Kotlin 2.0 (전 모듈), JDK 21 타깃
 - **Framework**: Spring Boot 3.4.13, Spring Modulith, Spring Batch
 - **Database**: PostgreSQL 16, Redis
 - **Messaging**: Apache Kafka
@@ -73,7 +73,7 @@ Resilience4j 서킷 브레이커 (외부 호출 실패율이 임계치를 넘으
 호가 등록과 체결 이벤트가 발생하면, 해당 SKU 를 구독 중인 클라이언트에게 호가창 스냅샷을
 서버가 직접 보내줍니다 (push). 5초마다 새로고침하는 방식 (polling) 보다 즉시 반영됩니다.
 
-설계 결정의 상세 배경은 [docs/adr/](docs/adr/) 의 ADR 27건에 정리되어 있습니다.
+설계 결정의 상세 배경은 [docs/adr/](docs/adr/) 의 ADR 28건에 정리되어 있습니다.
 
 ## 시스템 흐름
 
@@ -117,9 +117,9 @@ Spring Modulith 가 모듈 간 의존 방향을 빌드 시점에 검증합니다
 
 ```mermaid
 graph LR
-    in[market-adapter-in<br/>REST + WebSocket + Kafka<br/>Kotlin]
+    in[market-adapter-in<br/>REST + WebSocket + Kafka]
     app[market-application<br/>유스케이스 + 포트]
-    domain[market-domain<br/>도메인 모델 + 매칭 엔진<br/>Kotlin]
+    domain[market-domain<br/>도메인 모델 + 매칭 엔진]
     out[market-adapter-out<br/>JPA + Outbox + PG]
     batch[market-batch<br/>Spring Batch]
     boot[market-bootstrap<br/>Boot main + Flyway]
@@ -133,11 +133,13 @@ graph LR
     app --> domain
 ```
 
+전 모듈 Kotlin 으로 작성했습니다.
+
 | 모듈 | 책임 |
 |---|---|
-| `market-domain` | 순수 도메인 모델 (Spring 런타임 의존성 없음). 매칭 엔진, 거래 상태머신, 수수료 계산 (Kotlin) |
+| `market-domain` | 순수 도메인 모델 (Spring 런타임 의존성 없음). 매칭 엔진, 거래 상태머신, 수수료 계산 |
 | `market-application` | 유스케이스, 외부 포트 인터페이스 |
-| `market-adapter-in` | REST 컨트롤러, WebSocket, Kafka Saga 컨슈머 (Kotlin) |
+| `market-adapter-in` | REST 컨트롤러, WebSocket, Kafka Saga 컨슈머 |
 | `market-adapter-out` | JPA, Outbox, Redis, 외부 PG 클라이언트, S3 |
 | `market-batch` | 만료 호가 정리, TTL 초과 거래 자동 취소 |
 | `market-bootstrap` | Spring Boot 진입점, Flyway, Modulith 검증 |
@@ -165,46 +167,50 @@ H2 와 Mock PG 를 사용하여 외부 의존성 없이 실행할 수 있습니�
 
 판매 호가 등록 시 한 트랜잭션 안에서 일어나는 일입니다.
 
-```java
+```kotlin
 // 멱등성 키 점유 (같은 요청이 두 번 와도 한 번만 처리되게 차단)
-idempotencyKeys.acquireOrThrow(cmd.idempotencyKey());
+idempotency.acquireAndReleaseOnRollback(command.idempotencyKey)
 
 // SKU 단위 직렬화 — 같은 상품의 매칭이 동시에 돌지 않도록 한 줄로 줄세움
-orderBook.acquireSkuLock(cmd.skuId());
+orderBook.acquireSkuLock(command.skuId)
 
 // 새 ASK 저장 후, 같은 SKU 의 가장 높은 BID 를 잠그면서 조회 (다른 트랜잭션이 동시에
 // 매칭하지 못하도록 행 잠금)
-listings.save(Listing.place(cmd.skuId(), cmd.sellerId(), cmd.askPrice(), now));
-Optional<Bid> highestBid = orderBook.findHighestBidForUpdate(cmd.skuId(), now);
+val listing = Listing.place(command.skuId, command.sellerId, command.askPrice, now)
+listings.save(listing)
+val highestBid = orderBook.findHighestBidForUpdate(command.skuId, now)
 
 // 매칭 엔진은 순수 함수 (입력만으로 결과가 결정되고 부수효과 없음) 로 가격 비교,
 // 자기 호가에 자기가 체결되는 것 (self-trade) 차단, 먼저 들어온 호가 가격 (maker price)
 // 결정을 수행
-Optional<Trade> trade = MatchEngine.matchNewAsk(listing, highestBid, feePolicy, now);
+val trade = MatchEngine.matchNewAsk(listing, highestBid, feePolicy, now)
 
-trade.ifPresentOrElse(t -> {
-    listing.markMatched(t.id());
-    bid.markMatched(t.id());
-    trades.save(t);
-    events.publish(t.matched(now));      // Outbox 테이블 INSERT, DB 커밋과 같은 트랜잭션
-}, () -> events.publish(listing.placed(now)));
+if (trade.isPresent) {
+    val t = trade.get()
+    listing.markMatched(t.id)
+    highestBid.get().markMatched(t.id)
+    trades.save(t)
+    events.publish(t.matched(now))       // Outbox 테이블 INSERT, DB 커밋과 같은 트랜잭션
+} else {
+    events.publish(listing.placed(now))
+}
 // 이후 OutboxRelay 가 주기적으로 Kafka 발행, Saga 다음 단계 컨슈머가 결제 승인 진행
 ```
 
 ## 테스트 및 빌드
 
 ```bash
-./gradlew check                       # 전체 (266개)
+./gradlew check                       # 전체 (303개)
 ./gradlew :market-domain:test         # 도메인 단위
 ./gradlew :market-bootstrap:bootJar   # 배포용 jar 생성
 ```
 
 | 모듈 | 테스트 수 | 검증 |
 |---|---|---|
-| domain | 94 | Money, Listing/Bid 불변식, 매칭 엔진, 거래 상태머신, 수수료 계산, MarketStats / OHLC 집계, Snowflake ID |
-| application | 80 | 매칭/결제/검수/환불/정산 서비스, 토큰 버킷 rate limiter, saga 보상 멱등성 (mock 기반) |
-| adapter-in | 22 | TradingController / 호가창 STOMP / 인증 추출기 / GlobalExceptionHandler slice |
-| adapter-out | 54 | Mock PG, Wiremock IT, Resilience4j CB, Redis Testcontainer (2단 캐시 + pub/sub invalidation), Bulkhead, Outbox relay |
+| domain | 95 | Money, Listing/Bid 불변식, 매칭 엔진, 거래 상태머신, 수수료 계산, MarketStats / OHLC 집계, Snowflake ID |
+| application | 100 | 매칭/결제/검수/환불/정산 서비스, 토큰 버킷 rate limiter, saga 보상 멱등성 (mock 기반) |
+| adapter-in | 30 | TradingController / 호가창 STOMP / 인증 추출기 / GlobalExceptionHandler slice |
+| adapter-out | 62 | Mock PG, Wiremock IT, Resilience4j CB, Redis Testcontainer (2단 캐시 + pub/sub invalidation), Bulkhead, Outbox relay |
 | bootstrap | 8 | Modulith verify, application context smoke, 모듈 다이어그램 자동 생성 |
 | e2e-tests | 8 | Postgres 위 매칭, 전체 라이프사이클, 검수 실패 환불, 동시 매칭 race |
 
