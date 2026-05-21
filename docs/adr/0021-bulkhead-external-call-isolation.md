@@ -64,16 +64,15 @@ raw 어댑터 (`RestPgClient`, `MockBankTransferClient`) 는 그대로 두고, �
 데코레이터를 application 측에 inject. application 코드는 `PgClient` 인터페이스만 알면 되어
 격리가 들어와도 코드 변경 0건.
 
-```java
-public AuthorizeResult authorize(AuthorizeRequest req) {
+```kotlin
+override fun authorize(req: AuthorizeRequest): AuthorizeResult =
     try {
-        return bulkhead.execute(() -> delegate.authorize(req));
-    } catch (BulkheadCapacityExceededException e) {
-        return AuthorizeResult.rejected("BULKHEAD_FULL", "결제 시스템 부하");
-    } catch (BulkheadAwaitTimeoutException e) {
-        return AuthorizeResult.rejected("BULKHEAD_TIMEOUT", "결제 응답 지연");
+        bulkhead.execute { delegate.authorize(req) }
+    } catch (e: BulkheadCapacityExceededException) {
+        AuthorizeResult.rejected("BULKHEAD_FULL", "결제 시스템 부하")
+    } catch (e: BulkheadAwaitTimeoutException) {
+        AuthorizeResult.rejected("BULKHEAD_TIMEOUT", "결제 응답 지연")
     }
-}
 ```
 
 큐 포화 / await 시간 초과 → **도메인 거절 결과** 로 변환. application 코드는 이미 *PG 거절을
