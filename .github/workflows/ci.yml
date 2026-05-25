@@ -70,7 +70,7 @@ jobs:
       - name: Build bootJar
         run: ./gradlew :market-bootstrap:bootJar --no-daemon
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build image
         run: |
           docker build -t bid-ask-marketplace:${{ github.sha }} \
