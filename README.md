@@ -73,7 +73,10 @@ Resilience4j 서킷 브레이커 (외부 호출 실패율이 임계치를 넘으
 호가 등록과 체결 이벤트가 발생하면, 해당 SKU 를 구독 중인 클라이언트에게 호가창 스냅샷을
 서버가 직접 보내줍니다 (push). 5초마다 새로고침하는 방식 (polling) 보다 즉시 반영됩니다.
 
-설계 결정의 상세 배경은 [docs/adr/](docs/adr/) 의 ADR 28건에 정리되어 있습니다.
+설계 결정의 상세 배경은 [docs/adr/](docs/adr/) 의 ADR 28건에 정리되어 있습니다. 백엔드 패턴을
+**공부 목적**으로 본다면 → [docs/backend-skills-index.md](docs/backend-skills-index.md): 이 레포가
+시연하는 패턴을 "코드 위치 → 왜(ADR) → 이론([dev-lab](https://github.com/ssa1004/dev-lab))" 으로
+잇는 학습 인덱스.
 
 ## 시스템 흐름
 
@@ -147,7 +150,14 @@ graph LR
 
 ## 실행 방법
 
-H2 와 Mock PG 를 사용하여 외부 의존성 없이 실행할 수 있습니다.
+> `make help` 로 전체 명령을 볼 수 있습니다. 가장 빠른 길:
+> ```bash
+> make up      # 인프라 기동 (Postgres/Redis/Kafka/Wiremock)
+> make run     # 앱 호스트 실행 (:8080) — market-bootstrap
+> make demo    # 다른 셸에서 BID/ASK 매칭 → 거래 → 멱등성 시연
+> ```
+
+H2 와 Mock PG 를 사용하여 외부 의존성 없이 실행할 수 있습니다 (`make up` 없이도 동작).
 
 ```bash
 ./gradlew :market-bootstrap:bootRun
@@ -155,6 +165,12 @@ H2 와 Mock PG 를 사용하여 외부 의존성 없이 실행할 수 있습니�
 # 다른 터미널에서 데모 시나리오 실행
 ./scripts/demo.sh
 ```
+
+> **Kafka listener 설계** (`infrastructure/docker-compose.yml`): 호스트에서 `./gradlew
+> :market-bootstrap:bootRun` 으로 띄운 앱은 `localhost:9092` (EXTERNAL listener) 로,
+> compose 네트워크 안의 컨테이너 서비스는 `kafka:29092` (INTERNAL listener) 로 붙습니다.
+> 단일 listener (`advertised: localhost:9092`) 면 컨테이너가 `localhost` 을 자기 자신으로
+> 풀어 broker 를 못 찾고, OutboxRelay 가 Kafka 로 발행하지 못하는 흔한 함정이 생깁니다.
 
 데모는 상품 등록 → BID(160,000원) 등록 → 호가창 조회 → ASK(140,000원) 등록 → 즉시 매칭 →
 거래 조회 → 멱등성 검증의 한 사이클을 자동으로 실행합니다.

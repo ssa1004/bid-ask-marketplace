@@ -25,11 +25,19 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      # listener 를 두 개로 분리 — 호스트에서 ./gradlew bootRun 으로 띄운 앱(EXTERNAL)과
+      # compose 네트워크 안의 컨테이너 서비스(INTERNAL)가 둘 다 붙을 수 있게.
+      #   EXTERNAL : 호스트 → localhost:9092
+      #   INTERNAL : 컨테이너 끼리 → kafka:29092 (broker 간 통신도 INTERNAL)
+      # 단일 listener(advertised: localhost:9092)면 컨테이너가 localhost 를 자기 자신으로
+      # 풀어 broker 를 못 찾고, 단일 listener(advertised: kafka:9092)면 호스트가 kafka
+      # 호스트명을 못 풀어 producer 가 hang/실패한다 — 두 listener 가 양쪽을 모두 만족.
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
   wiremock:
@@ -54,7 +62,7 @@ services:
       DB_USER: market
       DB_PASSWORD: market
       REDIS_HOST: redis
-      KAFKA_BOOTSTRAP: kafka:9092
+      KAFKA_BOOTSTRAP: kafka:29092   # 컨테이너끼리는 INTERNAL listener 로 접속
       PG_BASE_URL: http://wiremock:8080
       OAUTH_ISSUER_URI: http://localhost:9000   # 실제 IdP 로 교체
     ports: ["8080:8080"]
