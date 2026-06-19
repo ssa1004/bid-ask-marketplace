@@ -57,6 +57,27 @@ jobs:
         with: { distribution: temurin, java-version: '21', cache: gradle }
       - run: ./gradlew compileJava compileKotlin --no-daemon
 
+  quality:
+    name: ktlint + coverage (Kover)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: gradle }
+      - name: ktlint (Kotlin lint)
+        run: ./gradlew ktlintCheck --no-daemon
+      - name: Coverage report (Kover, e2e 제외)
+        run: ./gradlew koverXmlReport koverHtmlReport -x :e2e-tests:test --no-daemon
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kover-coverage
+          path: |
+            build/reports/kover/html/**
+            build/reports/kover/report.xml
+
   image:
     name: Docker image build + Trivy scan
     runs-on: ubuntu-latest
