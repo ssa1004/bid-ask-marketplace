@@ -3,17 +3,17 @@ name: CodeQL
 # Java/Kotlin SAST. production 코드는 전 모듈 Kotlin, 테스트만 Java/Kotlin 혼용이라
 # language 는 java-kotlin 하나로 양쪽을 함께 분석한다.
 #
-# push / PR trigger 는 ci.yml 과 같은 이유로 수동 검증용 비활성. 주 1회 스케줄로 정기
-# 스캔만 돌리고, 필요 시 workflow_dispatch 로 즉시 실행한다.
+# main 으로의 push / PR 마다 SAST 를 돌리고, 주 1회 스케줄로 정기 스캔도 유지한다.
+# 필요 시 workflow_dispatch 로 즉시 실행한다.
 on:
   workflow_dispatch:
   schedule:
     # 매주 월요일 03:00 UTC — dependabot weekly 와 같은 날.
     - cron: '0 3 * * 1'
-  # push:
-  #   branches: [main]
-  # pull_request:
-  #   branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   analyze:
