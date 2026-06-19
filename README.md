@@ -1,6 +1,8 @@
 # Bid/Ask Marketplace
 
 [![CI](https://github.com/ssa1004/bid-ask-marketplace/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ssa1004/bid-ask-marketplace/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-Kover-4DB6AC?logo=kotlin&logoColor=white)](https://github.com/ssa1004/bid-ask-marketplace/actions/workflows/ci.yml)
+[![ktlint](https://img.shields.io/badge/code%20style-ktlint-FF4081)](https://pinterest.github.io/ktlint/)
 [![JDK](https://img.shields.io/badge/JDK-21-orange?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.13-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)

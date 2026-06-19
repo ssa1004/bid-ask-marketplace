@@ -76,6 +76,25 @@ PR 전 `./gradlew test` 통과가 필수입니다.
 
 ## 코드 스타일
 
-- Kotlin (production 전 모듈 + 일부 테스트): ktlint, `kotlin.code.style=official`
-- Java (남은 일부 테스트 코드): Google Java Format 또는 IntelliJ default
+- Kotlin (production 전 모듈 + 일부 테스트): ktlint. 규칙은 `.editorconfig` 에 정의.
+- Java (테스트 코드 대부분): IntelliJ default
 - 주석 / 문서는 자연스러운 한국어 (영어 직역체 지양)
+
+ktlint 는 `org.jlleitschuh.gradle.ktlint` 플러그인으로 전 모듈에 적용된다. 기존 코드와
+굳어진 포매팅 관례(시그니처/체인 줄바꿈 등)와 충돌하는 규칙은 `.editorconfig` 에서 끄고,
+unused import 같은 "죽은 코드 잡기" 규칙은 켜 둔다.
+
+```bash
+./gradlew ktlintCheck     # lint 검사 (CI 와 동일)
+./gradlew ktlintFormat    # 자동 교정
+```
+
+## 커버리지
+
+JetBrains Kover 로 측정한다. 루트 프로젝트가 production 모듈 커버리지를 합산한다
+(`e2e-tests` 는 production 코드가 없어 제외).
+
+```bash
+./gradlew koverHtmlReport   # build/reports/kover/html/index.html
+./gradlew koverXmlReport    # build/reports/kover/report.xml (CI 업로드용)
+```
