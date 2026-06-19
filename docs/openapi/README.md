@@ -24,9 +24,15 @@ WebSocket 실시간 호가 push 는 OpenAPI 대상이 아니다 (REST endpoint �
 ./gradlew :market-bootstrap:generateOpenApiDocs
 ```
 
-앱 부팅에 Postgres / Kafka 가 필요하므로, 의존 인프라를 먼저 띄워야 한다.
-CI 에서는 service container 를 띄운 잡에서 위 태스크를 실행해 산출된 yaml 을
-commit 하거나 아티팩트로 업로드한다.
+기본 `dev` 프로필은 H2 + Mock 어댑터로 부팅하므로 **Postgres / Kafka / Redis 등 외부
+인프라가 필요 없다** (Redis/Kafka auto-config 는 `application.yml` 에서 exclude). 단,
+플러그인이 fork 하는 앱 프로세스는 **시스템 기본 `java` (JDK 21)** 로 실행되므로, `JAVA_HOME`
+이 21 이어야 한다. 빌드 toolchain 은 21 로 컴파일하지만 fork 실행은 toolchain JVM 을 쓰지
+않기 때문에, 기본 `java` 가 21 미만이면 forked 프로세스가 `UnsupportedClassVersionError`
+로 뜨지 못한다.
+
+CI(JDK 21 러너) 에서는 외부 컨테이너 없이 위 태스크를 그대로 실행해 산출된 yaml 을 commit
+하거나 아티팩트로 업로드한다.
 
 ## 보는 법
 
