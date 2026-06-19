@@ -2,7 +2,6 @@ package com.example.market.adapter.web
 
 import com.example.market.adapter.web.dto.CursorPageResponse
 import com.example.market.adapter.web.dto.MarketStatsResponse
-import com.example.market.adapter.web.dto.OhlcCandleView
 import com.example.market.adapter.web.dto.OhlcCandlesResponse
 import com.example.market.adapter.web.dto.PriceTickView
 import com.example.market.adapter.web.dto.PriceTicksResponse
