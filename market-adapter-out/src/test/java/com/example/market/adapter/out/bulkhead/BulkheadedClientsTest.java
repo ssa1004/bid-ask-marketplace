@@ -75,17 +75,18 @@ class BulkheadedClientsTest {
                 return RefundResult.approved("rf-x");
             }
         };
-        BulkheadedPgClient client = new BulkheadedPgClient(delegate,
-                newBulkhead("pg-tiny", 1, 1, 200));
+        ExternalCallBulkhead bulkhead = newBulkhead("pg-tiny", 1, 1, 200);
+        BulkheadedPgClient client = new BulkheadedPgClient(delegate, bulkhead);
 
         ExecutorService pool = Executors.newFixedThreadPool(4);
         try {
-            // 풀 + 큐 채우기 (core=1, queue=1).
+            // 풀(core=1) + 큐(capacity=1) 를 채워 다음 호출이 거절될 상태로 만든다.
             for (int i = 0; i < 2; i++) {
                 pool.submit(() -> client.authorize(new PgClient.AuthorizeRequest(
                         "k", money(10_000), "t", "b")));
             }
-            Thread.sleep(80);
+            // sleep 으로 추측하지 않고, 풀이 *증명상* 포화될 때까지 결정적으로 대기.
+            awaitSaturated(bulkhead);
 
             // 다음 호출은 BulkheadCapacityExceeded → BULKHEAD_FULL 거절 결과로 fallback.
             var ar = client.authorize(new PgClient.AuthorizeRequest(
@@ -124,17 +125,19 @@ class BulkheadedClientsTest {
             awaitUnchecked(hang);
             return BankTransferClient.SendResult.accepted("bank-x");
         };
-        BulkheadedBankTransferClient client = new BulkheadedBankTransferClient(delegate,
-                newBulkhead("bank-tiny", 1, 1, 200));
+        ExternalCallBulkhead bulkhead = newBulkhead("bank-tiny", 1, 1, 200);
+        BulkheadedBankTransferClient client = new BulkheadedBankTransferClient(delegate, bulkhead);
 
         ExecutorService pool = Executors.newFixedThreadPool(4);
         try {
+            // 풀(core=1) + 큐(capacity=1) 를 채워 다음 호출이 거절될 상태로 만든다.
             for (int i = 0; i < 2; i++) {
                 final int idx = i;
                 pool.submit(() -> client.send(new BankTransferClient.SendRequest(
                         "idem-" + idx, UserId.of("seller"), money(50_000), "memo")));
             }
-            Thread.sleep(80);
+            // sleep 으로 추측하지 않고, 풀이 *증명상* 포화될 때까지 결정적으로 대기.
+            awaitSaturated(bulkhead);
 
             var sr = client.send(new BankTransferClient.SendRequest(
                     "idem-99", UserId.of("seller"), money(50_000), "memo"));
@@ -158,6 +161,24 @@ class BulkheadedClientsTest {
         cfg.setAwaitTimeout(Duration.ofMillis(awaitMs));
         cfg.setRetryAfterSeconds(1);
         return ExternalCallBulkhead.create(registry, name, cfg);
+    }
+
+    /**
+     * 풀이 포화(코어 점유 + 큐 가득)될 때까지 결정적으로 대기. 백그라운드 제출 작업이 실제로
+     * 풀/큐를 점유했음을 메트릭으로 *증명*한 뒤 검증으로 넘어가므로, 느린 CI 러너에서도
+     * 타이밍에 흔들리지 않는다. 정해진 시간 안에 포화되지 않으면 (= 배선이 깨진 것) 실패로 멈춘다.
+     */
+    private static void awaitSaturated(ExternalCallBulkhead bulkhead) {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (System.nanoTime() < deadline) {
+            if (bulkhead.isSaturated()) {
+                return;
+            }
+            Thread.onSpinWait();
+        }
+        throw new AssertionError(
+                "bulkhead '" + bulkhead.name() + "' 가 제한 시간 안에 포화되지 않음 — "
+                        + "백그라운드 작업이 풀/큐를 점유하지 못했다");
     }
 
     private static Money money(long won) {

@@ -111,6 +111,18 @@ class ExternalCallBulkhead(
 
     fun name(): String = bulkhead.name
 
+    /**
+     * 풀이 포화 상태(코어 스레드가 모두 점유 + 큐에 남은 자리 없음)인지 여부.
+     *
+     * 다음 호출이 곧바로 [BulkheadCapacityExceededException] 으로 거절될지를 *제출 없이* 미리
+     * 알 수 있어, 풀 포화 거동을 검증하는 테스트가 sleep/타이밍에 기대지 않고 결정적으로 대기할 수
+     * 있다 (운영 코드 흐름에는 쓰이지 않는 관측용 헬퍼).
+     */
+    fun isSaturated(): Boolean {
+        val m = bulkhead.metrics
+        return m.availableThreadCount <= 0 && m.remainingQueueCapacity <= 0
+    }
+
     companion object {
         /**
          * factory — 이름 + 설정으로 instance 생성. registry 에 등록되어 metric 수집됨.
