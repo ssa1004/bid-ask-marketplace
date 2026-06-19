@@ -19,6 +19,12 @@ dependencies {
 
     runtimeOnly("com.h2database:h2")
     runtimeOnly("org.postgresql:postgresql")
+
+    // Job 테스트 — JobLauncherTestUtils + 인메모리 H2 JobRepository (Docker/Testcontainers 불필요)
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.batch:spring-batch-test")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 }
 
 kotlin {
