@@ -16,6 +16,9 @@ RUN ./gradlew :market-bootstrap:bootJar -x test --no-daemon
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+# OS 패키지 보안 패치 — base image 의 libssl3/libcrypto3 등 알려진 CVE 를 빌드 시점에 갱신.
+RUN apk upgrade --no-cache
+
 # non-root user (k8s PSS restricted 호환)
 RUN addgroup -g 10001 app && adduser -u 10001 -G app -s /bin/sh -D app
 USER 10001:10001
