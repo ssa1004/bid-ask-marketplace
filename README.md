@@ -8,6 +8,34 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.13-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+GitHub: [`ssa1004/bid-ask-marketplace`](https://github.com/ssa1004/bid-ask-marketplace)
+
+## English summary
+
+Backend for a limited-edition resell marketplace (think sneaker resale exchange). It
+matches incoming sell orders (ASK) and buy orders (BID) on the same SKU and drives the
+full trade lifecycle — payment, inspection, shipping, and settlement.
+
+- **Matching** is serialized per SKU with `pg_advisory_xact_lock(sku_id)` +
+  `FOR UPDATE SKIP LOCKED`, so concurrent requests on a hot SKU settle exactly once while
+  different SKUs run in parallel.
+- **Trade lifecycle** runs as a choreography saga over Kafka, kept atomic with the
+  **outbox pattern** (events INSERTed in the same DB transaction, relayed afterwards).
+- **External PG calls** are isolated with Resilience4j (circuit breaker, retry, bulkhead).
+- **Fee policy is frozen** per trade via a `FeeSnapshot`, so policy changes never alter
+  past settlements.
+- **Order book** is pushed to subscribers over WebSocket/STOMP instead of polling.
+
+Architecture: hexagonal, multi-module, Spring Modulith (module boundaries verified at
+build time). **Production code is written in Kotlin** (only `package-info.java` module
+descriptors remain Java, as Kotlin has no equivalent). The **test suite is currently a
+mix — mostly Java with some Kotlin** (see the test table below).
+
+The rest of this README is in Korean. Design rationale lives in the 28 ADRs under
+[docs/adr/](docs/adr/).
+
+---
+
 한정판 리셀 마켓의 백엔드입니다. 같은 상품에 들어온 판매 호가(ASK)와 구매 호가(BID)를
 자동으로 매칭하고, 결제, 검수, 배송, 정산까지 거래 라이프사이클 전 과정을 처리합니다.
 
@@ -17,7 +45,8 @@
 
 ## 기술 스택
 
-- **Language**: Kotlin 2.0 (전 모듈), JDK 21 타깃
+- **Language**: production 코드는 Kotlin 2.0 (모든 모듈, `package-info.java` 모듈
+  설명자 제외), 테스트는 Java 중심 + 일부 Kotlin. JDK 21 타깃
 - **Framework**: Spring Boot 3.4.13, Spring Modulith, Spring Batch
 - **Database**: PostgreSQL 16, Redis
 - **Messaging**: Apache Kafka
@@ -138,7 +167,8 @@ graph LR
     app --> domain
 ```
 
-전 모듈 Kotlin 으로 작성했습니다.
+production 코드는 전 모듈 Kotlin 입니다 (`package-info.java` 모듈 설명자만 Java — Kotlin 에
+대응물이 없어서). 테스트는 Java 중심에 일부 Kotlin 이 섞여 있습니다.
 
 | 모듈 | 책임 |
 |---|---|
@@ -218,10 +248,13 @@ if (trade.isPresent) {
 ## 테스트 및 빌드
 
 ```bash
-./gradlew check                       # 전체 (303개)
+./gradlew check                       # 전체 (약 309개)
 ./gradlew :market-domain:test         # 도메인 단위
+./gradlew :market-batch:test          # 배치 Job (H2, Docker 불필요)
 ./gradlew :market-bootstrap:bootJar   # 배포용 jar 생성
 ```
+
+테스트 코드는 Java 가 다수이고 일부 모듈(adapter-in / adapter-out 슬라이스, e2e)이 Kotlin 입니다.
 
 | 모듈 | 테스트 수 | 검증 |
 |---|---|---|
@@ -229,6 +262,7 @@ if (trade.isPresent) {
 | application | 100 | 매칭/결제/검수/환불/정산 서비스, 토큰 버킷 rate limiter, saga 보상 멱등성 (mock 기반) |
 | adapter-in | 30 | TradingController / 호가창 STOMP / 인증 추출기 / GlobalExceptionHandler slice |
 | adapter-out | 62 | Mock PG, Wiremock IT, Resilience4j CB, Redis Testcontainer (2단 캐시 + pub/sub invalidation), Bulkhead, Outbox relay |
+| batch | 6 | 만료 Listing/Bid 정리 + TTL 초과 거래 자동취소 Job (JobLauncherTestUtils, H2 기반) |
 | bootstrap | 8 | Modulith verify, application context smoke, 모듈 다이어그램 자동 생성 |
 | e2e-tests | 8 | Postgres 위 매칭, 전체 라이프사이클, 검수 실패 환불, 동시 매칭 race |
 
