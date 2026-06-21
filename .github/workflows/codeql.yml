@@ -48,7 +48,11 @@ jobs:
           build-mode: manual
 
       - name: Build (compile only)
-        run: ./gradlew compileJava compileKotlin --no-daemon
+        # CodeQL manual build-mode 는 컴파일러가 실제로 돌아야 소스를 추출한다.
+        # org.gradle.caching=true + setup-java 의 gradle 캐시 때문에 compile 태스크가
+        # FROM-CACHE 로 끝나면 추출할 소스가 없어 database finalize 가 exit 32 로 실패한다.
+        # --no-build-cache --rerun-tasks 로 매번 강제로 재컴파일한다.
+        run: ./gradlew compileJava compileKotlin --no-daemon --no-build-cache --rerun-tasks
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@181d5eefc20863364f96762470ba6f862bdef56b # v3.29.2
