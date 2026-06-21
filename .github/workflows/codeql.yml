@@ -15,6 +15,15 @@ on:
   pull_request:
     branches: [main]
 
+# 같은 PR 에 새 push 가 들어오면 진행 중 분석을 취소 (PR 한정). main/schedule 은 유지.
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# 기본은 읽기만. 결과 업로드 권한은 analyze job 에서 명시한다.
+permissions:
+  contents: read
+
 jobs:
   analyze:
     name: Analyze (java-kotlin)
@@ -26,13 +35,13 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with: { distribution: temurin, java-version: '21', cache: gradle }
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@181d5eefc20863364f96762470ba6f862bdef56b # v3.29.2
         with:
           languages: java-kotlin
           # Gradle 멀티모듈이라 자동 빌드 추론이 불안정 — 명시 빌드 단계를 둔다.
@@ -42,6 +51,6 @@ jobs:
         run: ./gradlew compileJava compileKotlin --no-daemon
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@181d5eefc20863364f96762470ba6f862bdef56b # v3.29.2
         with:
           category: "/language:java-kotlin"
