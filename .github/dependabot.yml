@@ -39,3 +39,18 @@ updates:
       - "ci"
     commit-message:
       prefix: "chore(ci)"
+
+  # docker: 앱 런타임 이미지(infrastructure/Dockerfile) 의 base image 태그 갱신.
+  #   eclipse-temurin JRE/JDK 의 패치 릴리스를 추적해 base CVE 를 줄인다.
+  #   wiremock/auth-stub 등 테스트 전용 Dockerfile 은 운영 영향이 없어 제외.
+  - package-ecosystem: "docker"
+    directory: "/infrastructure"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(deps)"
