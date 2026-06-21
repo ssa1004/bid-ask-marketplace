@@ -94,23 +94,80 @@ jobs:
     timeout-minutes: 15
     needs: [test, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      # SARIF 를 Security > Code scanning 탭에 업로드하기 위한 최소 권한.
+      security-events: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with: { distribution: temurin, java-version: '21', cache: gradle }
       - name: Build bootJar
         run: ./gradlew :market-bootstrap:bootJar --no-daemon
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Build image
         run: |
           docker build -t bid-ask-marketplace:${{ github.sha }} \
             -f infrastructure/Dockerfile .
-      - name: Trivy scan
-        # @master 같은 mutable ref 는 공급망 취약점 — tag 로 고정.
-        uses: aquasecurity/trivy-action@0.35.0
+      # 게이트 스캔 — fixable CRITICAL/HIGH 가 있으면 빌드를 실패시킨다 (운영 게이트 유지).
+      - name: Trivy scan (gate)
+        # @master 같은 mutable ref 는 공급망 취약점 — SHA 로 고정.
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: bid-ask-marketplace:${{ github.sha }}
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true
+      # 리포팅 스캔 — 게이트와 별개로 SARIF 를 생성해 Security 탭에 누적한다.
+      # unfixed 까지 포함해 전체 그림을 남기되, 업로드 실패가 빌드를 막지 않도록 한다.
+      - name: Trivy scan (SARIF report)
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: bid-ask-marketplace:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy-results.sarif
+          ignore-unfixed: false
+      - name: Upload Trivy SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@181d5eefc20863364f96762470ba6f862bdef56b # v3.29.2
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-image
+
+  helm:
+    name: Helm lint + kubeconform
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+        with:
+          version: v3.19.0
+      - name: Install kubeconform
+        run: |
+          KC_VERSION=v0.6.7
+          curl -sSfL "https://github.com/yannh/kubeconform/releases/download/${KC_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin kubeconform
+          kubeconform -v
+      # dev / prod 두 values 프로필 모두 렌더가 유효한지 검증.
+      - name: helm lint (dev + prod)
+        run: |
+          helm lint helm/resell-orderbook -f helm/resell-orderbook/values.yaml
+          helm lint helm/resell-orderbook -f helm/resell-orderbook/values-prod.yaml
+      # 렌더 결과를 K8s 스키마로 검증. CRD(ServiceMonitor 등)는 미설치 스키마로 건너뛴다.
+      - name: helm template | kubeconform (dev + prod)
+        run: |
+          for VALUES in values.yaml values-prod.yaml; do
+            echo "::group::kubeconform ${VALUES}"
+            helm template t helm/resell-orderbook -f "helm/resell-orderbook/${VALUES}" \
+              | kubeconform -strict -ignore-missing-schemas -summary \
+                  -schema-location default \
+                  -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+            echo "::endgroup::"
+          done
