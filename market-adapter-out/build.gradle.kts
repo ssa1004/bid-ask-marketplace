@@ -37,7 +37,7 @@ dependencies {
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
     // S3 (검수 사진 — LocalStack 호환)
-    implementation(platform("software.amazon.awssdk:bom:2.29.43"))
+    implementation(platform("software.amazon.awssdk:bom:2.46.15"))
     implementation("software.amazon.awssdk:s3")
 
     // Tracing
