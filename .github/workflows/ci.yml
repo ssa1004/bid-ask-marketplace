@@ -109,6 +109,9 @@ jobs:
       - name: Build image
         run: |
           docker build -t bid-ask-marketplace:${{ github.sha }} \
+            --build-arg VCS_REF="${{ github.sha }}" \
+            --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --build-arg VERSION="${{ github.ref_name }}" \
             -f infrastructure/Dockerfile .
       # 게이트 스캔 — fixable CRITICAL/HIGH 가 있으면 빌드를 실패시킨다 (운영 게이트 유지).
       - name: Trivy scan (gate)

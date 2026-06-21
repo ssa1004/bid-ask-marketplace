@@ -16,6 +16,22 @@ RUN ./gradlew :market-bootstrap:bootJar -x test --no-daemon
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+# OCI image 메타데이터 — CI 에서 --build-arg 로 주입 (없으면 기본값).
+#   docker build --build-arg VCS_REF=$(git rev-parse --short HEAD) \
+#                --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) ...
+ARG VCS_REF=unknown
+ARG BUILD_DATE=unknown
+ARG VERSION=unknown
+LABEL org.opencontainers.image.title="bid-ask-marketplace" \
+      org.opencontainers.image.description="한정판 리셀 마켓 백엔드 (BID/ASK 매칭 엔진 + 거래 라이프사이클 Saga)" \
+      org.opencontainers.image.source="https://github.com/ssa1004/bid-ask-marketplace" \
+      org.opencontainers.image.url="https://github.com/ssa1004/bid-ask-marketplace" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="ssa1004" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.version="${VERSION}"
+
 # OS 패키지 보안 패치 — base image 의 libssl3/libcrypto3 등 알려진 CVE 를 빌드 시점에 갱신.
 RUN apk upgrade --no-cache
 
