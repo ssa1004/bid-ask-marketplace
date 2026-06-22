@@ -31,11 +31,12 @@ WebSocket 실시간 호가 push 는 OpenAPI 대상이 아니다 (REST endpoint �
 않기 때문에, 기본 `java` 가 21 미만이면 forked 프로세스가 `UnsupportedClassVersionError`
 로 뜨지 못한다.
 
-CI(JDK 21 러너) 에서는 외부 컨테이너 없이 위 태스크를 그대로 실행해 산출된 yaml 을 commit
-하거나 아티팩트로 업로드한다.
+CI(JDK 21 러너) 에서는 `openapi-drift` job 이 외부 컨테이너 없이 위 태스크를 그대로 실행한
+뒤 `git diff --exit-code docs/openapi/resell-orderbook.yaml` 로 커밋된 spec 이 소스와
+일치하는지 검증한다. 컨트롤러를 바꾸고 spec 재생성을 빠뜨리면 (= drift) CI 가 실패한다.
 
 ## 보는 법
 
-- Swagger UI — 앱 실행 후 `http://localhost:8080/swagger-ui.html`
+- Swagger UI — 앱 실행 후 `http://localhost:8080/swagger` (path 는 `application.yml` 의 `springdoc.swagger-ui.path`)
 - Redoc — `npx @redocly/cli preview-docs docs/openapi/resell-orderbook.yaml`
 - 통합 뷰어 — profile repo `ssa1004/ssa1004` 의 `docs/api/index.html` (11 service spec 드롭다운)

@@ -1,0 +1,1688 @@
+openapi: 3.1.0
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+tags:
+- name: inspection
+  description: 검수 요청 — 운영자
+- name: admin-dlq
+  description: 운영자 DLQ 콘솔 — 거래 saga 실패 메시지 관리
+- name: trading
+  description: Listing/Bid/Trade 매칭
+- name: admin
+  description: 운영자 전용
+- name: market-data
+  description: 시세 카드 / 가격 차트 raw 데이터
+- name: inspection-scheduling
+  description: 검수 센터 예약
+- name: catalog
+  description: 상품 마스터
+- name: trade-lifecycle
+  description: 거래 라이프사이클 — 발송/수령/조회
+paths:
+  /api/v1/trades/{id}/seller-shipping:
+    post:
+      tags:
+      - trade-lifecycle
+      summary: 판매자 발송 (송장 입력)
+      operationId: shipping
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordSellerShippingRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/trades/{id}/complete:
+    post:
+      tags:
+      - trade-lifecycle
+      summary: 구매자 수령 완료 → COMPLETED
+      operationId: complete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TradeResponse"
+  /api/v1/trades/sell-now:
+    post:
+      tags:
+      - trading
+      summary: 즉시 판매 — Highest BID 매칭
+      operationId: sellNow
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+          minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstantTradeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TradeResponse"
+  /api/v1/trades/buy-now:
+    post:
+      tags:
+      - trading
+      summary: 즉시 구매 — Lowest ASK 매칭
+      operationId: buyNow
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+          minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstantTradeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TradeResponse"
+  /api/v1/products:
+    post:
+      tags:
+      - catalog
+      summary: 상품 등록 (운영자 전용)
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterProductRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /api/v1/listings:
+    post:
+      tags:
+      - trading
+      summary: 판매 호가(ASK) 등록 + 즉시 매칭 시도
+      operationId: place
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+          minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaceListingRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlaceListingResponse"
+  /api/v1/inspection/appointments:
+    post:
+      tags:
+      - inspection-scheduling
+      summary: 검수 예약 — capacity 초과 시 409
+      operationId: book
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+          minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookAppointmentRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AppointmentView"
+  /api/v1/inspection/appointments/{id}/reject:
+    post:
+      tags:
+      - inspection-scheduling
+      operationId: reject
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/inspection/appointments/{id}/complete:
+    post:
+      tags:
+      - inspection-scheduling
+      operationId: complete_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/inspection/appointments/{id}/cancel:
+    post:
+      tags:
+      - inspection-scheduling
+      summary: 셀러 본인 취소 — 다른 사용자 호출 시 403
+      operationId: cancel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/inspection/appointments/{id}/arrive:
+    post:
+      tags:
+      - inspection-scheduling
+      operationId: arrive
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/inspection-requests/{id}/result:
+    post:
+      tags:
+      - inspection
+      summary: 검수 결과 기록 (PASS/FAIL) — Trade 분기 자동
+      operationId: recordResult
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordInspectionResultRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InspectionRequestResponse"
+  /api/v1/inspection-requests/{id}/assign:
+    post:
+      tags:
+      - inspection
+      summary: 검수 담당자 배정
+      operationId: assign
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignInspectorRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/v1/inspection-requests/arrive:
+    post:
+      tags:
+      - inspection
+      summary: 검수센터 도착 처리 (Trade → INSPECTION_PENDING + Request open)
+      operationId: arrive_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArriveRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InspectionRequestResponse"
+  /api/v1/bids:
+    post:
+      tags:
+      - trading
+      summary: 구매 호가(BID) 등록 + 즉시 매칭 시도
+      operationId: placeBid
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          maxLength: 128
+          minLength: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaceBidRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PlaceBidResponse"
+  /api/v1/admin/refunds/{id}/retry:
+    post:
+      tags:
+      - admin
+      summary: Refund.FAILED → PG.refund 재시도
+      operationId: retry
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/admin/dlq/{messageId}/replay:
+    post:
+      tags:
+      - admin-dlq
+      summary: DLQ 메시지 단건 replay — 원래 토픽으로 재발행
+      operationId: replay
+      parameters:
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DlqActionRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DlqActionResponse"
+  /api/v1/admin/dlq/{messageId}/discard:
+    post:
+      tags:
+      - admin-dlq
+      summary: DLQ 메시지 단건 discard — soft delete (reason 필수)
+      operationId: discard
+      parameters:
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DlqActionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DlqActionResponse"
+  /api/v1/admin/dlq/bulk-replay:
+    post:
+      tags:
+      - admin-dlq
+      summary: 대량 replay — confirm=false 면 dry-run 강제
+      operationId: bulkReplay
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DlqBulkActionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/v1/admin/dlq/bulk-discard:
+    post:
+      tags:
+      - admin-dlq
+      summary: "대량 discard — confirm=false 면 dry-run, reason 필수"
+      operationId: bulkDiscard
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DlqBulkActionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /api/v1/trades/{id}:
+    get:
+      tags:
+      - trade-lifecycle
+      summary: 거래 조회 (본인 = buyer 또는 seller 만)
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TradeResponse"
+  /api/v1/trades/me/history:
+    get:
+      tags:
+      - trade-lifecycle
+      summary: 내 거래 내역 (cursor pagination)
+      operationId: history
+      parameters:
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CursorPageResponseTradeResponse"
+  /api/v1/products/{id}:
+    get:
+      tags:
+      - catalog
+      summary: 상품 조회
+      operationId: get_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+  /api/v1/orderbook/{skuId}:
+    get:
+      tags:
+      - trading
+      summary: 호가창 조회 (Top N ASK + BID)
+      operationId: orderBook
+      parameters:
+      - name: skuId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: depth
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 10
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OrderBookView"
+  /api/v1/market/ticks/{skuId}:
+    get:
+      tags:
+      - market-data
+      summary: "차트 raw 데이터 — [from, to) 의 체결 틱들"
+      operationId: ticks
+      parameters:
+      - name: skuId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 1000
+          maximum: 10000
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PriceTicksResponse"
+  /api/v1/market/ticks/{skuId}/cursor:
+    get:
+      tags:
+      - market-data
+      summary: 체결 틱 cursor pagination — 무한 스크롤 / 차트 백필
+      operationId: ticksCursor
+      parameters:
+      - name: skuId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 200
+          maximum: 1000
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CursorPageResponsePriceTickView"
+  /api/v1/market/stats/{skuId}:
+    get:
+      tags:
+      - market-data
+      summary: SKU 의 현재 시세 카드 (last trade + best bid/ask + 24h 통계)
+      operationId: stats
+      parameters:
+      - name: skuId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MarketStatsResponse"
+  /api/v1/market/ohlc/{skuId}:
+    get:
+      tags:
+      - market-data
+      summary: OHLC 캔들스틱 — TradingView/Highcharts 표준 형태
+      operationId: ohlc
+      parameters:
+      - name: skuId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: period
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 1000
+          maximum: 10000
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/OhlcCandlesResponse"
+  /api/v1/inspection/centers:
+    get:
+      tags:
+      - inspection-scheduling
+      summary: 검수 센터 목록
+      operationId: listCenters
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CenterListResponse"
+  /api/v1/inspection/centers/{centerId}/slots:
+    get:
+      tags:
+      - inspection-scheduling
+      summary: "센터의 [from, to) 안 슬롯 capacity"
+      operationId: slots
+      parameters:
+      - name: centerId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AvailableSlotsResponse"
+  /api/v1/inspection-requests/{id}:
+    get:
+      tags:
+      - inspection
+      summary: 검수 요청 조회
+      operationId: get_2
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InspectionRequestResponse"
+  /api/v1/admin/dlq:
+    get:
+      tags:
+      - admin-dlq
+      summary: DLQ 메시지 목록 (cursor pagination)
+      operationId: list
+      parameters:
+      - name: source
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: topic
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: errorType
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: skuId
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 50
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/CursorPageResponseDlqMessageResponse"
+  /api/v1/admin/dlq/{messageId}:
+    get:
+      tags:
+      - admin-dlq
+      summary: DLQ 메시지 단건 상세
+      operationId: detail
+      parameters:
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DlqMessageDetailResponse"
+  /api/v1/admin/dlq/stats:
+    get:
+      tags:
+      - admin-dlq
+      summary: 시간 bucket / source / SKU 적재량 통계
+      operationId: stats_1
+      parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: bucket
+        in: query
+        required: false
+        schema:
+          type: string
+          default: PT1H
+      - name: source
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: topSku
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 10
+      - name: topErrorType
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DlqStatsResponse"
+  /api/v1/admin/dlq/bulk-jobs/{jobId}:
+    get:
+      tags:
+      - admin-dlq
+      summary: Bulk 작업 폴링
+      operationId: job
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/DlqBulkJobResponse"
+  /api/v1/listings/{id}:
+    delete:
+      tags:
+      - trading
+      summary: 판매 호가 취소 (본인만)
+      operationId: cancelListing
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/v1/bids/{id}:
+    delete:
+      tags:
+      - trading
+      summary: 구매 호가 취소 (본인만)
+      operationId: cancelBid
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    RecordSellerShippingRequest:
+      type: object
+      properties:
+        trackingNumber:
+          type: string
+          minLength: 1
+      required:
+      - trackingNumber
+    TradeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        skuId:
+          type: string
+        sellerId:
+          type: string
+        buyerId:
+          type: string
+        price:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        buyerCharge:
+          type: integer
+          format: int64
+        sellerNet:
+          type: integer
+          format: int64
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - buyerCharge
+      - buyerId
+      - createdAt
+      - currency
+      - id
+      - price
+      - sellerId
+      - sellerNet
+      - skuId
+      - status
+    InstantTradeRequest:
+      type: object
+      properties:
+        skuId:
+          type: string
+          minLength: 1
+      required:
+      - skuId
+    RegisterProductRequest:
+      type: object
+      properties:
+        brand:
+          type: string
+          minLength: 1
+        modelName:
+          type: string
+          minLength: 1
+        styleCode:
+          type: string
+        category:
+          type: string
+          enum:
+          - SNEAKERS
+          - APPAREL
+          - WATCH
+          - BAG
+          - COLLECTIBLE
+          - ACCESSORY
+        releaseDate:
+          type: string
+          format: date-time
+        imageUrl:
+          type: string
+      required:
+      - brand
+      - category
+      - modelName
+    ProductResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        brand:
+          type: string
+        modelName:
+          type: string
+        styleCode:
+          type: string
+        category:
+          type: string
+          enum:
+          - SNEAKERS
+          - APPAREL
+          - WATCH
+          - BAG
+          - COLLECTIBLE
+          - ACCESSORY
+        releaseDate:
+          type: string
+          format: date-time
+        imageUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - brand
+      - category
+      - createdAt
+      - id
+      - modelName
+    PlaceListingRequest:
+      type: object
+      properties:
+        skuId:
+          type: string
+          minLength: 1
+        price:
+          type: integer
+          format: int64
+          maximum: 10000000000
+        currency:
+          type: string
+          maxLength: 3
+          minLength: 3
+      required:
+      - currency
+      - price
+      - skuId
+    PlaceListingResponse:
+      type: object
+      properties:
+        listingId:
+          type: string
+        matchedTradeId:
+          type: string
+      required:
+      - listingId
+    BookAppointmentRequest:
+      type: object
+      properties:
+        tradeId:
+          type: string
+          minLength: 1
+        centerId:
+          type: string
+          minLength: 1
+        desiredSlotTime:
+          type: string
+          minLength: 1
+      required:
+      - centerId
+      - desiredSlotTime
+      - tradeId
+    AppointmentView:
+      type: object
+      properties:
+        id:
+          type: string
+        tradeId:
+          type: string
+        centerId:
+          type: string
+        slotStart:
+          type: string
+        slotEnd:
+          type: string
+        status:
+          type: string
+        bookedAt:
+          type: string
+      required:
+      - bookedAt
+      - centerId
+      - id
+      - slotEnd
+      - slotStart
+      - status
+      - tradeId
+    RecordInspectionResultRequest:
+      type: object
+      properties:
+        outcome:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+        reason:
+          type: string
+        note:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+      required:
+      - outcome
+      - photoUrls
+    InspectionRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        tradeId:
+          type: string
+        status:
+          type: string
+        outcome:
+          type: string
+        reason:
+          type: string
+        note:
+          type: string
+        inspectorId:
+          type: string
+        photoUrls:
+          type: array
+          items:
+            type: string
+        requestedAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - photoUrls
+      - requestedAt
+      - status
+      - tradeId
+    AssignInspectorRequest:
+      type: object
+      properties:
+        inspectorId:
+          type: string
+          minLength: 1
+      required:
+      - inspectorId
+    ArriveRequest:
+      type: object
+      properties:
+        tradeId:
+          type: string
+      required:
+      - tradeId
+    PlaceBidRequest:
+      type: object
+      properties:
+        skuId:
+          type: string
+          minLength: 1
+        price:
+          type: integer
+          format: int64
+          maximum: 10000000000
+        currency:
+          type: string
+          maxLength: 3
+          minLength: 3
+      required:
+      - currency
+      - price
+      - skuId
+    PlaceBidResponse:
+      type: object
+      properties:
+        bidId:
+          type: string
+        matchedTradeId:
+          type: string
+      required:
+      - bidId
+    DlqActionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 0
+    DlqActionResponse:
+      type: object
+      properties:
+        messageId:
+          type: string
+        action:
+          type: string
+        performedAt:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        reason:
+          type: string
+        tradeId:
+          type: string
+        skuId:
+          type: string
+      required:
+      - action
+      - actor
+      - messageId
+      - performedAt
+    DlqBulkActionRequest:
+      type: object
+      properties:
+        source:
+          type: string
+          minLength: 1
+        topic:
+          type: string
+        errorType:
+          type: string
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        skuId:
+          type: string
+        confirm:
+          type: boolean
+        reason:
+          type: string
+          maxLength: 500
+          minLength: 0
+      required:
+      - confirm
+      - source
+    CursorPageResponseTradeResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradeResponse"
+        nextCursor:
+          type: string
+      required:
+      - items
+    OrderBookView:
+      type: object
+      properties:
+        skuId:
+          type: string
+        lowestAsk:
+          type: integer
+          format: int64
+        highestBid:
+          type: integer
+          format: int64
+        asks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceLevel"
+        bids:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceLevel"
+      required:
+      - asks
+      - bids
+      - skuId
+    PriceLevel:
+      type: object
+      properties:
+        price:
+          type: integer
+          format: int64
+        count:
+          type: integer
+          format: int32
+      required:
+      - count
+      - price
+    PriceTickView:
+      type: object
+      properties:
+        tradeId:
+          type: string
+        price:
+          type: number
+        occurredAt:
+          type: string
+      required:
+      - occurredAt
+      - price
+      - tradeId
+    PriceTicksResponse:
+      type: object
+      properties:
+        skuId:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+        ticks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceTickView"
+      required:
+      - from
+      - skuId
+      - ticks
+      - to
+    CursorPageResponsePriceTickView:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceTickView"
+        nextCursor:
+          type: string
+      required:
+      - items
+    MarketStatsResponse:
+      type: object
+      properties:
+        skuId:
+          type: string
+        asOf:
+          type: string
+        currency:
+          type: string
+        lastTradePrice:
+          type: number
+        lastTradeAt:
+          type: string
+        bestBid:
+          type: number
+        bestAsk:
+          type: number
+        spread:
+          type: number
+        last24hVolume:
+          type: integer
+          format: int64
+        last24hMin:
+          type: number
+        last24hAvg:
+          type: number
+        last24hMax:
+          type: number
+      required:
+      - asOf
+      - currency
+      - last24hVolume
+      - skuId
+    OhlcCandleView:
+      type: object
+      properties:
+        bucketStart:
+          type: string
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: integer
+          format: int64
+        tradeCount:
+          type: integer
+          format: int64
+      required:
+      - bucketStart
+      - close
+      - high
+      - low
+      - open
+      - tradeCount
+      - volume
+    OhlcCandlesResponse:
+      type: object
+      properties:
+        skuId:
+          type: string
+        period:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+        currency:
+          type: string
+        candles:
+          type: array
+          items:
+            $ref: "#/components/schemas/OhlcCandleView"
+      required:
+      - candles
+      - currency
+      - from
+      - period
+      - skuId
+      - to
+    CenterListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CenterView"
+      required:
+      - items
+    CenterView:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        parallelCapacity:
+          type: integer
+          format: int32
+        slotDurationMinutes:
+          type: integer
+          format: int64
+        bookingLeadTimeMinutes:
+          type: integer
+          format: int64
+      required:
+      - address
+      - bookingLeadTimeMinutes
+      - id
+      - name
+      - parallelCapacity
+      - slotDurationMinutes
+    AvailableSlotsResponse:
+      type: object
+      properties:
+        centerId:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/SlotAvailabilityView"
+      required:
+      - centerId
+      - from
+      - slots
+      - to
+    SlotAvailabilityView:
+      type: object
+      properties:
+        slotStart:
+          type: string
+        slotEnd:
+          type: string
+        totalCapacity:
+          type: integer
+          format: int32
+        bookedCount:
+          type: integer
+          format: int32
+        remaining:
+          type: integer
+          format: int32
+        bookable:
+          type: boolean
+      required:
+      - bookable
+      - bookedCount
+      - remaining
+      - slotEnd
+      - slotStart
+      - totalCapacity
+    CursorPageResponseDlqMessageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DlqMessageResponse"
+        nextCursor:
+          type: string
+      required:
+      - items
+    DlqMessageResponse:
+      type: object
+      properties:
+        messageId:
+          type: string
+        source:
+          type: string
+        topic:
+          type: string
+        errorType:
+          type: string
+        errorMessage:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        attemptCount:
+          type: integer
+          format: int32
+        tradeId:
+          type: string
+        skuId:
+          type: string
+      required:
+      - attemptCount
+      - errorMessage
+      - errorType
+      - messageId
+      - occurredAt
+      - source
+      - topic
+    DlqMessageDetailResponse:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/DlqMessageResponse"
+        payload:
+          type: string
+        stackTrace:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        partition:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+      required:
+      - firstSeenAt
+      - headers
+      - lastSeenAt
+      - payload
+      - stackTrace
+      - summary
+    DlqStatsBucketResponse:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        count:
+          type: integer
+          format: int64
+        bySource:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+      required:
+      - bySource
+      - count
+      - start
+    DlqStatsResponse:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        bucket:
+          type: string
+        total:
+          type: integer
+          format: int64
+        buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/DlqStatsBucketResponse"
+        bySource:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        byErrorType:
+          type: array
+          items:
+            $ref: "#/components/schemas/NamedCount"
+        bySku:
+          type: array
+          items:
+            $ref: "#/components/schemas/NamedCount"
+      required:
+      - bucket
+      - buckets
+      - byErrorType
+      - bySku
+      - bySource
+      - from
+      - to
+      - total
+    NamedCount:
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+          format: int64
+      required:
+      - count
+      - name
+    DlqBulkJobResponse:
+      type: object
+      properties:
+        mode:
+          type: string
+        id:
+          type: string
+        action:
+          type: string
+        source:
+          type: string
+        requestedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+        totalCount:
+          type: integer
+          format: int64
+        processedCount:
+          type: integer
+          format: int64
+        successCount:
+          type: integer
+          format: int64
+        failureCount:
+          type: integer
+          format: int64
+        firstError:
+          type: string
+      required:
+      - action
+      - createdAt
+      - failureCount
+      - id
+      - mode
+      - processedCount
+      - requestedBy
+      - source
+      - status
+      - successCount
+      - totalCount
