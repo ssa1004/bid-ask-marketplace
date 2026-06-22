@@ -67,6 +67,23 @@ jobs:
         with: { distribution: temurin, java-version: '21', cache: gradle }
       - run: ./gradlew compileJava compileKotlin --no-daemon
 
+  openapi-drift:
+    name: OpenAPI spec drift gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with: { distribution: temurin, java-version: '21', cache: gradle }
+      # dev 프로필은 H2 + Mock 어댑터라 Postgres / Kafka 없이 부팅 → service container 불필요.
+      # 플러그인이 fork 하는 앱은 러너 기본 java(21)로 실행되므로 toolchain 21 과 일치한다.
+      - name: Regenerate OpenAPI spec (zero-infra dev boot)
+        run: ./gradlew :market-bootstrap:generateOpenApiDocs --no-daemon
+      # 커밋된 spec 이 소스에서 재생성한 결과와 다르면 (= drift) 실패. docs/openapi 가
+      # 단일 진실값이라는 약속을 CI 가 강제한다.
+      - name: Fail on spec drift
+        run: git diff --exit-code docs/openapi/resell-orderbook.yaml
+
   quality:
     name: ktlint + coverage (Kover)
     runs-on: ubuntu-latest
