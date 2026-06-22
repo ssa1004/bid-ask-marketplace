@@ -20,7 +20,7 @@ dependencies {
     implementation("org.springframework.kafka:spring-kafka")
 
     // OpenAPI
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
 
     // Tracing
     implementation("io.micrometer:micrometer-tracing")
@@ -28,7 +28,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:6.3.0")
     testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 }
 

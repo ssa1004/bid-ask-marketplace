@@ -21,14 +21,14 @@ dependencies {
 
     // Redis support — idempotency key store, cache infrastructure
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    implementation("org.redisson:redisson-spring-boot-starter:3.34.1")
+    implementation("org.redisson:redisson-spring-boot-starter:4.6.1")
 
     // 2단계 캐시
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("com.github.ben-manes.caffeine:caffeine")
 
     // PG client (외부 결제)
-    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.4.0")
     implementation("org.springframework.boot:spring-boot-starter-web")  // RestClient
 
     // Messaging (Outbox + Kafka)
@@ -37,7 +37,7 @@ dependencies {
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
     // S3 (검수 사진 — LocalStack 호환)
-    implementation(platform("software.amazon.awssdk:bom:2.29.43"))
+    implementation(platform("software.amazon.awssdk:bom:2.46.15"))
     implementation("software.amazon.awssdk:s3")
 
     // Tracing
@@ -45,12 +45,12 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.kafka:spring-kafka-test")
-    testImplementation("org.wiremock:wiremock-standalone:3.10.0")
+    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("com.redis:testcontainers-redis:2.2.2")
+    testImplementation("com.redis:testcontainers-redis:2.2.4")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:6.3.0")
 }
 
 kotlin {
