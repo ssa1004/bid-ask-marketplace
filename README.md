@@ -5,7 +5,7 @@
 [![ktlint](https://img.shields.io/badge/code%20style-ktlint-FF4081)](https://pinterest.github.io/ktlint/)
 [![JDK](https://img.shields.io/badge/JDK-21-orange?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.13-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.15-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 GitHub: [`ssa1004/bid-ask-marketplace`](https://github.com/ssa1004/bid-ask-marketplace)
@@ -47,7 +47,7 @@ The rest of this README is in Korean. Design rationale lives in the 28 ADRs unde
 
 - **Language**: production 코드는 Kotlin 2.0 (모든 모듈, `package-info.java` 모듈
   설명자 제외), 테스트는 Java 중심 + 일부 Kotlin. JDK 21 타깃
-- **Framework**: Spring Boot 3.4.13, Spring Modulith, Spring Batch
+- **Framework**: Spring Boot 3.5.15, Spring Modulith, Spring Batch
 - **Database**: PostgreSQL 16, Redis
 - **Messaging**: Apache Kafka
 - **Security**: Spring Security (OAuth2 Resource Server, JWT)
