@@ -39,6 +39,8 @@ open class PlaceBidService(
         idempotency.acquireAndReleaseOnRollback(command.idempotencyKey)
         val now = clock.instant()
 
+        // SKU 단위 advisory lock → best 호가를 FOR UPDATE SKIP LOCKED 로 조회하는 2단계 잠금.
+        // 매칭 동시성 처리의 전체 근거는 mirror 인 PlaceListingService 의 KDoc 참고.
         orderBook.acquireSkuLock(command.skuId)
 
         val bid = Bid.place(command.skuId, command.buyerId, command.bidPrice, now)
