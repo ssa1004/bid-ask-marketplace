@@ -88,6 +88,11 @@ GET /api/v1/market/ticks/{skuId}?from=...&to=...&limit=  → 차트 raw 데이�
   `@TransactionalEventListener` 로 추출 가능 (지금은 명시적 호출이 언제 record 되는지 더 분명)
 - (단점) read side 가 PG 부하를 그대로 받음 — 트래픽 늘면 read replica + 캐시 도입
 
+## 용어 풀이 (쉽게)
+
+- **aggregation push-down (집계를 DB로 떠넘기기)** — 합계·평균 같은 계산을 앱이 데이터를 다 끌어와서 하지 않고, DB 에게 "네가 세서 결과만 줘" 라고 시키는 것. 수만 건을 앱 메모리로 옮기지 않아 빠르다.
+- **read replica (읽기 전용 복제본)** — 원본 DB 의 사본을 따로 두고 조회만 그쪽으로 보내는 것. 원본은 쓰기에 집중하고 사본은 읽기 손님을 받아 부담을 나눈다.
+
 ## 후속 후보
 
 - 1분/5분/1시간/1일 OHLC 사전 집계 + REST `/api/v1/market/ohlc/{skuId}?period=1H&count=24`

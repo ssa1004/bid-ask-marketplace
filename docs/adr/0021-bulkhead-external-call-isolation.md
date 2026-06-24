@@ -137,3 +137,10 @@ raw 어댑터에 `@Component("rawPgClient")` / `@Component("rawBankTransferClien
   코어 = 가상 스레드 수가 매우 커도 OS thread 부하 없음.
 - External SLO 메트릭 export — Bulkhead queue depth / await time 을 Prometheus alert 로 → SRE
   대시보드.
+
+## 용어 풀이 (쉽게)
+
+- **Bulkhead (격벽 격리)** — 배의 방수 격벽처럼 외부 호출을 종류별 전용 칸(스레드 풀)에 가둬, 한 곳(PG)이 막혀도 다른 곳(호가창·검수)으로 안 번지게 하는 것.
+- **cascade failure (연쇄 장애)** — 느려진 한 곳이 그걸 기다리는 스레드를 다 잡아먹고, 그 위로 도미노처럼 번져 시스템 전체가 무너지는 장애. 격벽이 이 도미노를 끊는다.
+- **Little's law (리틀의 법칙)** — '필요한 동시 처리 수 ≈ 초당 도착하는 양 × 한 건당 걸리는 시간'이라는 간단한 공식. 풀 크기를 추측이 아니라 이 식으로 정한다.
+- **데코레이터 패턴 (decorator)** — 원래 코드를 건드리지 않고 겉을 한 겹 감싸 기능을 더하는 방식. raw 어댑터를 그대로 두고 격리 기능만 덧씌워 앱 코드 변경 0건으로 적용했다.

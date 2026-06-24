@@ -106,6 +106,14 @@ startup 성공 후의 liveness 는 짧은 주기로 빠르게 응답성을 모�
 - Kubernetes 가 sidecar container ordering 을 정식 지원하면 (>= 1.29) sidecar 패턴
   으로 init/shutdown 순서를 더 깔끔히 풀 수 있음 — 그때 재검토.
 
+## 용어 풀이 (쉽게)
+
+- **rolling restart (롤링 재시작)** — 서버 여러 대를 한꺼번에 끄지 않고 한 대씩 죽이고 새로 띄우길 반복해, 서비스를 멈추지 않으면서 교체하는 것.
+- **graceful shutdown (우아한 종료)** — 종료 신호를 받으면 새 요청은 거절하되 이미 처리 중인 일은 끝까지 마치고 멈추는 것. 손님 받던 식당이 새 손님만 안 받고 안에 있는 손님은 다 응대하고 닫는 것과 같다.
+- **SIGTERM / SIGKILL (종료 신호)** — SIGTERM 은 '정리하고 곱게 나가라'는 부탁, SIGKILL 은 '지금 즉시 강제 종료'다. 정해진 시간 안에 못 끝내면 부탁이 강제로 바뀐다.
+- **probe (liveness / readiness / startup, 헬스체크)** — 쿠버네티스가 주기적으로 던지는 생존 확인. startup 은 '다 떴나', liveness 는 '살아있나', readiness 는 '트래픽 받을 준비됐나'. startup 을 따로 둬 느린 부팅을 '죽음'으로 오해하지 않게 한다.
+- **crashloop (크래시 루프)** — 부팅 도중 '죽었네' 오판으로 재시작 → 또 부팅 중 오판 → 다시 재시작이 무한 반복되는 상태. startup probe 가 부팅 시간을 봐줘 이걸 막는다.
+
 ## 참고
 - [Kubernetes — Pod Lifecycle: Pod termination](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination)
 - [Spring Boot — Graceful shutdown](https://docs.spring.io/spring-boot/reference/web/graceful-shutdown.html)

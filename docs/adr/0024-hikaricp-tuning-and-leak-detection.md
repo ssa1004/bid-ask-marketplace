@@ -151,3 +151,10 @@ Grafana 대시보드는 위 4개를 한 화면에 — 상시 점검 + alert 의 
   때. session-mode + advisory lock 호환성 확인 후.
 - Slow query alert 와의 연계 — `hikaricp.connections.usage` 가 길어진 트랜잭션은 보통
   slow query 와 연결. pg_stat_statements 와 join 한 대시보드.
+
+## 용어 풀이 (쉽게)
+
+- **connection pool (커넥션 풀)** — DB 연결을 매번 새로 맺지 않고 미리 몇 개 만들어 돌려쓰는 '공용 전화기 묶음'. 전화기 수(풀 크기)가 모자라면 손님이 줄을 서고, 다 차면 통화 자체가 거절된다.
+- **connection leak (커넥션 누수)** — 빌린 DB 연결을 다 쓰고 반납(close)하는 걸 깜빡해 풀에서 한 개씩 사라지는 것. 평소엔 안 보이다가 풀이 마르는 순간 모든 요청이 멈춘다.
+- **풀 고갈 (pool exhaustion)** — 누수나 폭주로 풀의 연결이 전부 빌려나가 남은 게 없는 상태. 누수가 난 곳과 무관한 화면까지 같이 먹통이 된다.
+- **lock contention (락 경합)** — 같은 데이터를 여러 연결이 동시에 잡으려고 다투며 서로 기다리는 것. 풀을 무작정 키우면 오히려 이 다툼이 늘어 처리량이 떨어진다.
