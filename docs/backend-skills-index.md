@@ -43,7 +43,7 @@
 | 패턴 | 이 레포 어디서 | 왜 (ADR) | 한 줄 |
 |------|---------------|---------|-------|
 | **Circuit Breaker + Retry (PG)** | `RestPgClient` `@CircuitBreaker(name="pg")` + `@Retry` + fallback (`adapter/out/pg`) | [ADR-0009](adr/0009-resilience4j-pg.md) | PG 장애가 우리 Trade 트랜잭션으로 전파되지 않게 차단 — 최근 20건 중 실패율 50% 초과 시 OPEN, 30초 후 half-open |
-| **ThreadPool Bulkhead 격리** | `BulkheadedPgClient` / `BulkheadedBankTransferClient` (`adapter/out/bulkhead`) | [ADR-0021](adr/0021-bulkhead-external-call-isolation.md) | PG / 은행 호출을 전용 풀에 격리 — 한 외부 의존의 슬로우다운이 호가창·검수 endpoint 로 cascade 안 됨. CB 차단 전 servlet thread 점유부터 방지 |
+| **ThreadPool Bulkhead 격리**(= 배의 방수 격벽처럼 외부 호출을 종류별 전용 풀에 가둬, 한 곳이 느려져도 그 풀만 막히고 나머지는 멀쩡하게 두는 격리) | `BulkheadedPgClient` / `BulkheadedBankTransferClient` (`adapter/out/bulkhead`) | [ADR-0021](adr/0021-bulkhead-external-call-isolation.md) | PG / 은행 호출을 전용 풀에 격리 — 한 외부 의존의 슬로우다운이 호가창·검수 endpoint 로 cascade 안 됨. CB 차단 전 servlet thread 점유부터 방지 |
 | **Retry: exponential backoff + jitter** | PG / 은행 / 검수센터 retry instance | [ADR-0026](adr/0026-retry-with-exponential-backoff-and-jitter.md) | `randomizedWaitFactor` 로 회복 순간 thundering herd 방지 + `retryExceptions` 화이트리스트 (4xx 는 retry 안 함) |
 | **HikariCP 튜닝 + leak detection** | DataSource 설정 (`market-bootstrap`) | [ADR-0024](adr/0024-hikaricp-tuning-and-leak-detection.md) | 풀 크기를 `도착률 × 평균 TX 시간` 으로 산정 + `leak-detection-threshold` 로 누수 코드 위치를 stack trace 로 즉시 노출 |
 | **Graceful shutdown + startup probe + preStop** | Spring `server.shutdown=graceful` + k8s manifests (`infrastructure/k8s`) | [ADR-0027](adr/0027-graceful-shutdown-and-startup-probe.md) | rolling restart 시 in-flight 매칭 / Kafka commit 손실 0 |
@@ -54,7 +54,7 @@
 
 | 패턴 | 이 레포 어디서 | 왜 (ADR) | 한 줄 |
 |------|---------------|---------|-------|
-| **2단 캐시 (Caffeine L1 + Redis L2) + stampede 보호** | `TwoTierMarketStatsCache` (`adapter/out/cache`) | [ADR-0019](adr/0019-multi-tier-cache-with-stampede-protection.md) | hot SKU 시세 카드 폭주 흡수 — L1(1초)·L2(10초) + cache stampede(thundering herd) 방지 |
+| **2단 캐시 (Caffeine L1 + Redis L2) + stampede 보호**(= 캐시 유효기간이 끝나는 순간 여러 요청이 한꺼번에 DB로 몰려 짓밟는 현상(stampede)을, 만료 직전 미리 갱신 + 한 명만 갱신하게 잠가서 막는 것) | `TwoTierMarketStatsCache` (`adapter/out/cache`) | [ADR-0019](adr/0019-multi-tier-cache-with-stampede-protection.md) | hot SKU 시세 카드 폭주 흡수 — L1(1초)·L2(10초) + cache stampede(thundering herd) 방지 |
 | **Cache invalidation cross-pod broadcast** | `CacheInvalidationPublisher` / `CacheInvalidationSubscriber` (`adapter/out/cache`, Redis pub/sub) | [ADR-0022](adr/0022-cache-invalidation-pubsub.md) | 한 pod 갱신을 다른 pod 의 L1 까지 즉시 전파 — pod 간 1초 stale 제거 |
 | **Token bucket rate limiter (Redis Lua)** | `RedisTokenBucketRateLimiter` (`adapter/out/ratelimit`) | [ADR-0020](adr/0020-token-bucket-rate-limiter.md) | 발매 시점 자동화 스크립트 폭주로부터 호가/즉시매매 endpoint 보호 — `429 + Retry-After` (RFC 6585) |
 | **CQRS — 쓰기 JPA, 읽기 분리** | 쓰기 애그리거트 vs `OrderBookQueryPort` / MarketData read | [ADR-0006](adr/0006-cqrs-write-vs-read.md) | 호가창/차트 읽기는 쓰기와 모양이 달라 필요한 곳만 분리 — 불필요한 N+1 회피 |
@@ -66,7 +66,7 @@
 
 | 패턴 | 이 레포 어디서 | 왜 (ADR) | 한 줄 |
 |------|---------------|---------|-------|
-| **헥사고날 + Spring Modulith** | 6개 gradle 모듈 (domain/application/adapter-in/adapter-out/batch/bootstrap) | [ADR-0001](adr/0001-modular-monolith-with-spring-modulith.md), [ADR-0002](adr/0002-hexagonal-architecture.md) | 모듈 의존 방향을 빌드 시점에 `ApplicationModules.verify()` 로 검증. MSA 대신 모듈러 모놀리스. 도메인은 순수 (Spring/JPA 의존 0) |
+| **헥사고날 + Spring Modulith**(= 핵심 로직을 가운데 두고 DB·Kafka·웹은 콘센트(port)와 플러그(adapter)로만 연결해 바깥을 바꿔도 핵심 코드는 안 건드리는 구조 + 모듈 경계를 빌드 시점에 검증하는 도구) | 6개 gradle 모듈 (domain/application/adapter-in/adapter-out/batch/bootstrap) | [ADR-0001](adr/0001-modular-monolith-with-spring-modulith.md), [ADR-0002](adr/0002-hexagonal-architecture.md) | 모듈 의존 방향을 빌드 시점에 `ApplicationModules.verify()` 로 검증. MSA 대신 모듈러 모놀리스. 도메인은 순수 (Spring/JPA 의존 0) |
 | **FeeSnapshot (정책 동결)** | `Trade.match()` 시점의 `FeePolicy.snapshotFor(price)` (`market-domain`) | [ADR-0012](adr/0012-fee-snapshot.md) | 수수료 정책이 바뀌어도 과거 거래 정산액 불변 — Trade 가 그 시점 수수료 계산서를 명시 컬럼으로 품음 |
 | **Snowflake ID (시간 정렬 64bit)** | PriceTick 식별자 (`market-domain`) | [ADR-0018](adr/0018-snowflake-id-for-pricetick.md) | 시계열 tick 의 시간 정렬 가능한 분산 ID — auto-increment 병목 없이 정렬 보존 |
 | **Market Data 시계열 + OHLC 사전 집계** | MarketData read API + OHLC 집계 batch (`market-batch`) | [ADR-0015](adr/0015-market-data-time-series.md), [ADR-0016](adr/0016-ohlc-candlestick-aggregation.md) | 시세 통계 / 캔들스틱을 매 호출 재계산 대신 사전 집계 |
