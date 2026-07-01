@@ -21,7 +21,7 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:kafka")
-    testImplementation("com.redis:testcontainers-redis:2.2.2")
+    testImplementation("com.redis:testcontainers-redis:2.2.4")
     testImplementation("org.awaitility:awaitility")
     testImplementation("org.springframework.kafka:spring-kafka-test")
 }
