@@ -107,7 +107,7 @@ open class OhlcAggregationService(
     companion object {
         private val log = LoggerFactory.getLogger(OhlcAggregationService::class.java)
 
-        /** 한 SKU 의 한 버킷 안 tick 수가 이 값을 넘으면 청크로 잘라 처리 (메모리 폭증 방지). */
+        /** 한 SKU 의 한 버킷 tick 로딩 상한 — 초과분은 로드되지 않는다(메모리 폭증 방지). */
         private const val MAX_TICKS_PER_BUCKET: Int = 10_000
     }
 }
