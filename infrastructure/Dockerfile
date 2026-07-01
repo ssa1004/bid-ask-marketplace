@@ -1,7 +1,7 @@
 # Multi-stage build — JDK 21 으로 build, JRE 21 Alpine 으로 run.
 # Layered jar 로 layer cache 최적화.
 
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM eclipse-temurin:25-jdk-alpine AS builder
 WORKDIR /build
 COPY gradle gradle
 COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
@@ -13,7 +13,7 @@ COPY market-batch market-batch
 COPY market-bootstrap market-bootstrap
 RUN ./gradlew :market-bootstrap:bootJar -x test --no-daemon
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
 # OCI image 메타데이터 — CI 에서 --build-arg 로 주입 (없으면 기본값).
